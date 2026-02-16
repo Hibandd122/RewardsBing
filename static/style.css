@@ -85,7 +85,7 @@ body::before {
 
 .card:hover {
     box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255, 255, 255, 0.6);
-    transform: scale(1.01);
+    transform: scale(1.01) translateY(-4px);
 }
 
 /* ===== HEADER ===== */
@@ -345,7 +345,7 @@ body::before {
 /* ===== BING CONTAINER ===== */
 .bing-container {
     width: 100%;
-    height: 100px;
+    height: 140px; /* tăng chiều cao để nhìn rõ hơn */
     border-radius: 20px;
     overflow: hidden;
     background: white;
@@ -367,20 +367,33 @@ body::before {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 8px;
     color: var(--gray);
-    background: #f5f7fc;
+    background: linear-gradient(145deg, #f0f3fa, #ffffff);
+    animation: pulsePlaceholder 2s infinite ease-in-out;
+}
+
+@keyframes pulsePlaceholder {
+    0% { opacity: 0.8; }
+    50% { opacity: 1; }
+    100% { opacity: 0.8; }
 }
 
 .iframe-placeholder i {
-    font-size: 2rem;
+    font-size: 3rem;
     color: var(--primary-light);
-    opacity: 0.5;
+    opacity: 0.7;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
 }
 
 .iframe-placeholder span {
-    font-size: 0.85rem;
-    font-weight: 500;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--primary);
+    background: rgba(255,255,255,0.6);
+    padding: 4px 12px;
+    border-radius: 40px;
+    backdrop-filter: blur(4px);
 }
 
 .bing-container iframe {
@@ -466,6 +479,6 @@ body::before {
     }
 
     .bing-container {
-        height: 80px;
+        height: 120px; /* điều chỉnh responsive */
     }
 }
