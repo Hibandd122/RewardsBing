@@ -9,9 +9,9 @@
     const progressSpan = document.getElementById('progress');
     const bingDiv = document.getElementById('bing');
 
-    // ---- Cấu hình mặc định ----
+    // ---- Cấu hình mặc định (100 lần, 10 giây) ----
     let searchConfig = {
-        limit: 35,
+        limit: 100,
         interval: 10000
     };
 
@@ -63,27 +63,17 @@
     };
     updateSettingsText();
 
-    // ---- Danh sách từ khóa rút gọn (10 chủ đề × 15 từ = 150 từ) ----
+    // ---- Danh sách từ khóa (giữ nguyên) ----
     const termLists = [
-        // Game & giải trí
         ["game","play","fun","movie","music","song","dance","party","holiday","travel","adventure","quest","hero","battle","win"],
-        // Công nghệ
         ["computer","phone","tablet","laptop","screen","keyboard","mouse","internet","wifi","app","software","hardware","code","program","data"],
-        // Động vật
         ["dog","cat","fish","bird","horse","cow","pig","chicken","duck","rabbit","turtle","frog","lion","tiger","elephant"],
-        // Thiên nhiên
         ["sun","moon","star","sky","cloud","rain","snow","wind","storm","mountain","river","ocean","sea","forest","tree"],
-        // Màu sắc
         ["red","blue","green","yellow","black","white","purple","orange","pink","brown","gray","gold","silver","cyan","magenta"],
-        // Cảm xúc
         ["happy","sad","angry","excited","bored","tired","calm","nervous","brave","scared","funny","serious","proud","shy","kind"],
-        // Đồ vật
         ["book","pen","paper","desk","chair","table","door","window","wall","light","lamp","bed","clock","watch","bag"],
-        // Ẩm thực
         ["food","water","milk","bread","rice","noodle","soup","fruit","apple","banana","orange","grape","chocolate","cake","coffee"],
-        // Thể thao
         ["sport","ball","football","soccer","basketball","tennis","golf","swim","run","jump","throw","catch","hit","kick","goal"],
-        // Phương tiện
         ["car","bus","train","plane","bike","boat","ship","truck","motor","drive","ride","fly","sail","road","bridge"]
     ];
 
@@ -124,6 +114,7 @@
     let timerNext = null, timerComplete = null;
 
     const toClockFormat = (ms, showHours = false) => {
+        if (ms < 0) ms = 0;
         const hrs = Math.floor(ms / (1000*60*60)) % 24;
         const min = Math.floor(ms / (1000*60)) % 60;
         const sec = Math.floor(ms / 1000) % 60;
@@ -156,6 +147,9 @@
     let currentSearches = [];
 
     const startSearch = () => {
+        // Nếu đang chạy thì không start lại
+        if (stopBtn.style.display === 'inline-flex') return;
+
         startBtn.style.display = 'none';
         stopBtn.style.display = 'inline-flex';
         currentSearches = generateSearches();
@@ -204,6 +198,12 @@
         searchConfig.interval = parseInt(e.target.value);
         cookies.set('_search_interval', searchConfig.interval, 365);
         location.reload();
+    });
+
+    // ---- Tự động bắt đầu khi trang load ----
+    window.addEventListener('load', () => {
+        // Đợi một chút để mọi thứ ổn định
+        setTimeout(startSearch, 500);
     });
 
     // ---- WakeLock ----
