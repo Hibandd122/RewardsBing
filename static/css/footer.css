@@ -1,0 +1,24 @@
+.footer-note {
+    font-size: 0.9rem;
+    color: var(--primary-dark);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 2px solid rgba(0, 201, 183, 0.2);
+}
+
+.footer-note i {
+    color: var(--accent);
+    font-size: 1rem;
+}
+
+.footer-note strong {
+    font-weight: 700;
+    background: linear-gradient(145deg, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}

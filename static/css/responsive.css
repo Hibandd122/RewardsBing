@@ -1,0 +1,18 @@
+@media (max-width: 600px) {
+    .wrapper { max-width: 100%; }
+    .card { padding: 24px 18px; }
+    .bing-container { height: 300px; }
+}
+
+@media (max-width: 480px) {
+    .card-header { flex-wrap: wrap; gap: 10px; }
+    .header-icon { width: 48px; height: 48px; border-radius: 16px; }
+    .header-icon i { font-size: 24px; }
+    .card-header h2 { font-size: 1.5rem; }
+    .badge { padding: 4px 10px; font-size: 0.8rem; }
+    .btn { padding: 14px 8px; font-size: 1rem; gap: 8px; }
+    .info-box { padding: 14px 16px; }
+    .info-box i { font-size: 1.5rem; width: 32px; }
+    .progress-value { font-size: 1.1rem; }
+    .bing-container { height: 250px; }
+}
