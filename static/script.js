@@ -9,10 +9,18 @@
     const progressBox = document.getElementById('progress');
     const bingDiv = document.getElementById('bing');
 
-    // ---- Thêm thanh tiến trình ----
+    // ---- Thêm thanh tiến trình và vùng hiển thị từ khoá ----
     const progressBar = document.createElement('div');
     progressBar.className = 'progress-bar';
     progressBox.appendChild(progressBar);
+
+    // Thêm dòng hiển thị từ khoá hiện tại (sẽ cập nhật sau)
+    const currentTermSpan = document.createElement('span');
+    currentTermSpan.className = 'current-term';
+    currentTermSpan.style.marginLeft = '8px';
+    currentTermSpan.style.fontWeight = '600';
+    currentTermSpan.style.color = 'var(--accent)';
+    timerDiv.querySelector('.info-content').appendChild(currentTermSpan);
 
     // ---- Cấu hình mặc định ----
     let searchConfig = {
@@ -20,40 +28,40 @@
         interval: 10000
     };
 
-    // ---- Cookie helpers ----
+    // ---- Cookie helpers nâng cấp ----
     const cookies = {
         set: (name, value, days) => {
             try {
                 const d = new Date();
                 d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
-                document.cookie = `${name}=${value};expires=${d.toUTCString()};path=/`;
-            } catch (e) {}
+                document.cookie = `${name}=${value};expires=${d.toUTCString()};path=/;SameSite=Lax`;
+            } catch (e) { console.warn('Cookie set failed:', e); }
         },
-        get: (name) => {
+        get: (name, defaultValue = null) => {
             try {
                 const cookies = document.cookie.split(';');
                 for (let c of cookies) {
                     const [key, val] = c.trim().split('=');
-                    if (key === name) return { name, value: val };
+                    if (key === name) return val;
                 }
-            } catch (e) {}
-            return { name, value: null };
+            } catch (e) { console.warn('Cookie get failed:', e); }
+            return defaultValue;
         }
     };
 
-    // ---- Load từ cookie ----
+    // ---- Load từ cookie với kiểm tra ----
     const loadCookies = () => {
         const limitCookie = cookies.get('_search_limit');
         const intervalCookie = cookies.get('_search_interval');
-        if (limitCookie.value) {
-            searchConfig.limit = parseInt(limitCookie.value);
-            limitSelect.value = limitCookie.value;
+        if (limitCookie && !isNaN(parseInt(limitCookie))) {
+            searchConfig.limit = parseInt(limitCookie);
+            limitSelect.value = limitCookie;
         } else {
             cookies.set('_search_limit', searchConfig.limit, 365);
         }
-        if (intervalCookie.value) {
-            searchConfig.interval = parseInt(intervalCookie.value);
-            intervalSelect.value = intervalCookie.value;
+        if (intervalCookie && !isNaN(parseInt(intervalCookie))) {
+            searchConfig.interval = parseInt(intervalCookie);
+            intervalSelect.value = intervalCookie;
         } else {
             cookies.set('_search_interval', searchConfig.interval, 365);
         }
@@ -68,7 +76,7 @@
     };
     updateSettingsText();
 
-    // ---- DANH SÁCH TỪ KHÓA MỞ RỘNG (NÂNG CẤP) ----
+    // ---- DANH SÁCH TỪ KHÓA MỞ RỘNG (bổ sung thêm) ----
     const termLists = [
         // Cơ bản
         ["game", "play", "fun", "movie", "music", "song", "dance", "party", "holiday", "travel", "adventure", "quest", "hero", "battle", "win"],
@@ -81,7 +89,11 @@
         ["food", "water", "milk", "bread", "rice", "noodle", "soup", "fruit", "apple", "banana", "orange", "grape", "chocolate", "cake", "coffee"],
         ["sport", "ball", "football", "soccer", "basketball", "tennis", "golf", "swim", "run", "jump", "throw", "catch", "hit", "kick", "goal"],
         ["car", "bus", "train", "plane", "bike", "boat", "ship", "truck", "motor", "drive", "ride", "fly", "sail", "road", "bridge"],
-        // Bổ sung thêm nhiều chủ đề
+        ["AI", "machine learning", "neural network", "deep learning", "algorithm", "data science"],
+        ["covid", "vaccine", "health", "pandemic", "virus", "immunity", "hospital"],
+        ["crypto", "bitcoin", "ethereum", "blockchain", "NFT", "mining", "wallet"],
+        ["spacex", "nasa", "rocket", "satellite", "ISS", "mars", "moon"],
+        ["iphone", "samsung", "xiaomi", "smartphone", "android", "ios", "app"],
         ["science", "physics", "chemistry", "biology", "experiment", "lab", "microscope", "atom", "cell", "gravity", "energy", "force", "motion", "quantum", "theory"],
         ["history", "war", "king", "queen", "empire", "revolution", "ancient", "medieval", "civilization", "archaeology", "pyramid", "castle", "temple", "artifact", "museum"],
         ["art", "painting", "drawing", "sculpture", "gallery", "artist", "canvas", "brush", "color", "sketch", "portrait", "landscape", "abstract", "modern", "classic"],
@@ -99,62 +111,76 @@
         ["business", "money", "finance", "bank", "investment", "stock", "market", "economy", "startup", "company", "CEO", "manager", "employee", "salary", "profit"]
     ];
 
-    // ---- Tham số FORM (giữ nguyên) ----
+    // ---- Tham số FORM mở rộng ----
     const formParams = [
         "QBLH","QBRE","HDRSC1","LGWQS1","LGWQS2","LGWQS3","R5FD","R5FD1","R5FD2","R5FD3",
         "R5FD4","R5FD5","R5FD6","R5FD7","QSRE1","QSRE2","QSRE3","QSRE4","QSRE5","QSRE6",
-        "QSRE7","QSRE8"
+        "QSRE7","QSRE8", "QSR9", "QSR10", "QSR11", "QSR12" // thêm mới
     ];
 
-    // ---- Hàm chọn từ ngẫu nhiên ----
-    const randomTerm = () => {
-        const list = termLists[Math.floor(Math.random() * termLists.length)];
-        return list[Math.floor(Math.random() * list.length)];
+    // ---- Hàm chọn từ ngẫu nhiên (có kiểm soát lặp) ----
+    const randomTerm = (usedTerms = new Set()) => {
+        // Nếu đã dùng quá nhiều, cho phép lặp lại (tránh infinite loop)
+        if (usedTerms.size > termLists.flat().length * 0.8) {
+            const list = termLists[Math.floor(Math.random() * termLists.length)];
+            return list[Math.floor(Math.random() * list.length)];
+        }
+        let term;
+        do {
+            const list = termLists[Math.floor(Math.random() * termLists.length)];
+            term = list[Math.floor(Math.random() * list.length)];
+        } while (usedTerms.has(term));
+        return term;
     };
+
     const randomForm = () => formParams[Math.floor(Math.random() * formParams.length)];
 
     // ---- Tạo danh sách tìm kiếm với delay chính xác ----
     const generateSearches = () => {
         const searches = [];
         let cumulativeDelay = 0;
+        const usedTerms = new Set();
         while (searches.length < searchConfig.limit) {
-            const term = randomTerm();
-            if (!searches.some(s => s.term === term)) {
-                const index = searches.length + 1;
-                const url = `https://www.bing.com/search?q=${encodeURIComponent(term.toLowerCase())}&FORM=${randomForm()}`;
+            const term = randomTerm(usedTerms);
+            usedTerms.add(term);
+            const index = searches.length + 1;
+            const url = `https://www.bing.com/search?q=${encodeURIComponent(term.toLowerCase())}&FORM=${randomForm()}`;
 
-                let currentDelay;
-                if (searchConfig.interval === 9999) {
-                    currentDelay = (Math.floor(Math.random() * 51) + 10) * 1000; // 10-60 giây
-                } else {
-                    currentDelay = searchConfig.interval;
-                }
-                cumulativeDelay += currentDelay;
-
-                searches.push({
-                    term,
-                    url,
-                    index,
-                    delay: cumulativeDelay,
-                    currentDelay
-                });
+            let currentDelay;
+            if (searchConfig.interval === 9999) {
+                currentDelay = (Math.floor(Math.random() * 51) + 10) * 1000; // 10-60 giây
+            } else {
+                currentDelay = searchConfig.interval;
             }
+            cumulativeDelay += currentDelay;
+
+            searches.push({
+                term,
+                url,
+                index,
+                delay: cumulativeDelay,
+                currentDelay
+            });
         }
         return searches;
     };
 
-    // ---- Timer helpers ----
+    // ---- Timer helpers với độ chính xác cao ----
     let timeouts = [];
     let nextSearchTime = null;
     let completeTime = null;
     let countdownInterval = null;
+    let autoStopTimeout = null; // riêng cho timeout tự động kết thúc
 
     const toClockFormat = (ms, showHours = false) => {
         if (ms < 0) ms = 0;
-        const hrs = Math.floor(ms / (1000*60*60)) % 24;
+        const hrs = Math.floor(ms / (1000*60*60));
         const min = Math.floor(ms / (1000*60)) % 60;
         const sec = Math.floor(ms / 1000) % 60;
-        return `${showHours ? String(hrs).padStart(2,'0')+':' : ''}${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+        if (showHours || hrs > 0) {
+            return `${String(hrs).padStart(2,'0')}:${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+        }
+        return `${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
     };
 
     const updateTimerDisplay = () => {
@@ -165,45 +191,51 @@
         const completeMs = completeTime - now;
 
         let timerText = '';
-        if (searchConfig.interval === 9999) {
-            if (nextMs > 0) {
-                timerText = `⏳ Tìm tiếp trong ${toClockFormat(nextMs)}`;
-            } else {
-                timerText = `⚡ Đang tìm...`;
-            }
-            timerText += `, kết thúc sau ${toClockFormat(completeMs, true)}`;
+        if (nextMs > 0) {
+            timerText = `⏳ Tìm tiếp trong ${toClockFormat(nextMs)}`;
         } else {
-            if (nextMs > 0) {
-                timerText = `⏳ Tìm tiếp trong ${toClockFormat(nextMs)}`;
-            } else {
-                timerText = `⚡ Đang tìm...`;
-            }
-            timerText += `, xong sau ${toClockFormat(completeMs, true)}`;
+            timerText = `⚡ Đang tìm...`;
         }
+        timerText += `, xong sau ${toClockFormat(completeMs, true)}`;
         timerDiv.querySelector('.info-value').innerText = timerText;
     };
 
     const startCountdown = () => {
         if (countdownInterval) clearInterval(countdownInterval);
-        countdownInterval = setInterval(updateTimerDisplay, 500);
+        countdownInterval = setInterval(updateTimerDisplay, 200); // cập nhật nhanh hơn
     };
 
     const clearAllTimeouts = () => {
         timeouts.forEach(id => clearTimeout(id));
         timeouts = [];
+        if (autoStopTimeout) {
+            clearTimeout(autoStopTimeout);
+            autoStopTimeout = null;
+        }
         if (countdownInterval) {
             clearInterval(countdownInterval);
             countdownInterval = null;
         }
     };
 
-    const updateProgress = (current, total) => {
+    // Format số thứ tự động theo tổng số
+    const formatIndex = (current, total) => {
+        const padLen = String(total).length;
+        return String(current).padStart(padLen, '0');
+    };
+
+    const updateProgress = (current, total, term = '') => {
         const percent = (current / total) * 100;
         progressBar.style.width = `${percent}%`;
         progressBar.setAttribute('aria-valuenow', percent);
-        const text = `(${String(current).padStart(2, '0')}/${String(total).padStart(2, '0')})`;
+        const text = `(${formatIndex(current, total)}/${total})`;
         progressBox.querySelector('.progress-value').innerText = text;
         document.title = `${text} - Bing Auto Search`;
+
+        // Cập nhật từ khoá hiện tại nếu có
+        if (term) {
+            currentTermSpan.innerText = `🔍 ${term}`;
+        }
     };
 
     // ---- Xử lý tìm kiếm ----
@@ -211,12 +243,12 @@
     let currentIndex = 0;
 
     const startSearch = () => {
-        // Nếu đang chạy thì không start lại
         if (stopBtn.style.display === 'inline-flex') return;
 
         startBtn.style.display = 'none';
         stopBtn.style.display = 'inline-flex';
         progressBar.style.width = '0%';
+        currentTermSpan.innerText = ''; // xóa từ cũ
 
         currentSearches = generateSearches();
         currentIndex = 0;
@@ -227,7 +259,7 @@
         currentSearches.forEach(s => {
             const timeoutId = setTimeout(() => {
                 currentIndex = s.index;
-                updateProgress(currentIndex, searchConfig.limit);
+                updateProgress(currentIndex, searchConfig.limit, s.term);
 
                 const nextSearch = currentSearches.find(se => se.index === s.index + 1);
                 if (nextSearch) {
@@ -236,18 +268,25 @@
                     nextSearchTime = null;
                 }
 
+                // Nếu là lần cuối, lên lịch tự động dừng sau 3 giây
                 if (s.index === searchConfig.limit) {
-                    setTimeout(() => {
+                    autoStopTimeout = setTimeout(() => {
                         if (stopBtn.style.display === 'inline-flex') {
                             stopSearch(false);
                         }
                     }, 3000);
+                    timeouts.push(autoStopTimeout); // lưu để có thể huỷ nếu cần
                 }
 
+                // Tạo iframe với kiểm tra lỗi
                 const iframe = document.createElement('iframe');
                 iframe.src = s.url;
                 iframe.title = s.term;
                 iframe.setAttribute('data-index', s.index);
+                iframe.onerror = () => {
+                    console.error('Iframe failed to load:', s.url);
+                    // Có thể thử lại hoặc bỏ qua
+                };
                 while (bingDiv.firstChild) bingDiv.removeChild(bingDiv.firstChild);
                 bingDiv.appendChild(iframe);
             }, s.delay);
@@ -273,6 +312,7 @@
         progressBar.style.width = '0%';
         progressBox.querySelector('.progress-value').innerText = '(00/00)';
         timerDiv.querySelector('.info-value').innerText = 'Đã dừng';
+        currentTermSpan.innerText = '';
         document.title = 'Bing Auto Search';
 
         if (openPoints) {
@@ -285,35 +325,44 @@
     stopBtn.addEventListener('click', () => stopSearch(true));
 
     limitSelect.addEventListener('change', (e) => {
-        searchConfig.limit = parseInt(e.target.value);
-        cookies.set('_search_limit', searchConfig.limit, 365);
-        location.reload();
+        const val = parseInt(e.target.value);
+        if (!isNaN(val) && val > 0) {
+            searchConfig.limit = val;
+            cookies.set('_search_limit', val, 365);
+            location.reload();
+        }
     });
 
     intervalSelect.addEventListener('change', (e) => {
-        searchConfig.interval = parseInt(e.target.value);
-        cookies.set('_search_interval', searchConfig.interval, 365);
-        location.reload();
+        const val = parseInt(e.target.value);
+        if (!isNaN(val) && val > 0) {
+            searchConfig.interval = val;
+            cookies.set('_search_interval', val, 365);
+            location.reload();
+        }
     });
 
-    // ---- WakeLock ----
+    // ---- WakeLock với xử lý lỗi ----
     if ('wakeLock' in navigator) {
         let wakeLockSentinel = null;
-        const requestWakeLock = () => {
-            navigator.wakeLock.request('screen').then(sentinel => {
-                wakeLockSentinel = sentinel;
-                sentinel.addEventListener('release', () => {
+        const requestWakeLock = async () => {
+            try {
+                wakeLockSentinel = await navigator.wakeLock.request('screen');
+                wakeLockSentinel.addEventListener('release', () => {
                     wakeLockSentinel = null;
                 });
-            }).catch(() => {});
+            } catch (err) {
+                console.warn('WakeLock error:', err);
+            }
         };
         requestWakeLock();
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && !wakeLockSentinel) requestWakeLock();
+            if (document.visibilityState === 'visible' && !wakeLockSentinel) {
+                requestWakeLock();
+            }
         });
     }
 
-    // ---- TỰ ĐỘNG CHẠY KHI TRANG LOAD ----
-    // Đợi một chút để mọi thứ sẵn sàng
-    setTimeout(startSearch, 500);
+    // ---- TỰ ĐỘNG CHẠY KHI TRANG LOAD (có thể delay để DOM sẵn sàng) ----
+    setTimeout(startSearch, 600);
 })();
