@@ -364,5 +364,43 @@
     }
 
     // ---- TỰ ĐỘNG CHẠY KHI TRANG LOAD (có thể delay để DOM sẵn sàng) ----
-    setTimeout(startSearch, 600);
-})();
+    // Lắng nghe lệnh từ extension (thông qua content script)
+// ---- TỰ ĐỘNG CHẠY KHI TRANG LOAD ----
+    // Lắng nghe lệnh từ extension
+    window.addEventListener('message', (event) => {
+        // Kiểm tra data hợp lệ
+        const dataPayload = event.data;
+        if (!dataPayload || !dataPayload.action) return;
+
+        const { action, data } = dataPayload;
+
+        switch (action) {
+            case 'START_SEARCH':
+                // Cập nhật cấu hình từ dữ liệu gửi xuống
+                if (data) {
+                    if (data.limit) {
+                        searchConfig.limit = data.limit;
+                        limitSelect.value = data.limit;
+                    }
+                    if (data.interval !== undefined) {
+                        searchConfig.interval = data.interval;
+                        intervalSelect.value = data.interval;
+                    }
+                }
+                // Cập nhật hiển thị cài đặt
+                updateSettingsText();
+                
+                // Bắt đầu tìm kiếm
+                startSearch();
+                break; // Kết thúc case START_SEARCH
+
+            case 'STOP_SEARCH':
+                stopSearch(false); // false để không mở trang pointsbreakdown
+                break;
+
+            default:
+                break;
+        }
+    });
+
+})(); // Kết thúc IIFE bắt đầu từ dòng 1
